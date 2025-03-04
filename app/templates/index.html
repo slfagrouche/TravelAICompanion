@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personal Travel Guide</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-functions-compat.js"></script>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <!-- Google Fonts -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}&callback=initMap"></script>
+    
+  <!-- Custom CSS -->
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #f8f9fa;
+      color: #333;
+      scroll-behavior: smooth;
+    }
+
+    /* Auth Modal Styles */
+    .auth-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .auth-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .auth-container {
+      background-color: white;
+      border-radius: 10px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      position: relative;
+      transform: translateY(-20px);
+      transition: transform 0.3s ease;
+    }
+
+    .auth-modal.active .auth-container {
+      transform: translateY(0);
+    }
+
+    .auth-close {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #666;
+      transition: color 0.2s ease;
+    }
+
+    .auth-close:hover {
+      color: #333;
+    }
+
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .auth-tab {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-weight: 500;
+      color: #666;
+      transition: all 0.2s ease;
+      border-bottom: 2px solid transparent;
+    }
+
+    .auth-tab.active {
+      color: #007bff;
+      border-bottom: 2px solid #007bff;
+    }
+
+    .auth-form {
+      display: none;
+    }
+
+    .auth-form.active {
+      display: block;
+    }
+
+    .auth-form input {
+      margin-bottom: 1rem;
+    }
+
+    .auth-form button {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .auth-providers {
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+
+    .auth-providers button {
+      background: white;
+      border: 1px solid #ddd;
+      padding: 0.5rem 1rem;
+      margin: 0 0.5rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .auth-providers button:hover {
+      background: #f8f9fa;
+      border-color: #ccc;
+    }
+
+    .auth-providers img {
+      height: 20px;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+
+    /* User Menu Styles */
+    .user-menu {
+      position: relative;
+    }
+
+    .user-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      min-width: 200px;
+      z-index: 100;
+      display: none;
+    }
+
+    .user-dropdown.active {
+      display: block;
+    }
+
+    .user-dropdown-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #f1f1f1;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .user-dropdown-item:hover {
+      background: #f8f9fa;
+    }
+
+    .user-dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    /* Email Guide Modal */
+    .email-guide-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .email-guide-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .email-guide-container {
+      background-color: white;
+      border-radius: 10px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      position: relative;
+      transform: translateY(-20px);
+      transition: transform 0.3s ease;
+    }
+
+    .email-guide-modal.active .email-guide-container {
+      transform: translateY(0);
+    }
+
+    .email-guide-close {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #666;
+      transition: color 0.2s ease;
+    }
+
+    .email-guide-close:hover {
+      color: #333;
+    }
+
+    .preference-tag {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      margin: 0.25rem;
+      background: #f1f1f1;
+      border-radius: 5px;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .preference-tag.active {
+      background: #007bff;
+      color: #fff;
+    }
+    /* Hero Section */
+    .hero-section {
+      background-image: url('https://i.ibb.co/RDyqPN0/neom-wb-OKjg-Qv3n-Y-unsplash.jpg');
+      background-size: cover;
+      background-position: center;
+      height: 70vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #fff;
+      position: relative;
+    }
+    
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.4));
+      z-index: 1;
+    }
+    
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 800px;
+    }
+    
+    .hero-content h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .hero-content p {
+      font-size: 1.4rem;
+      margin-bottom: 2.5rem;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    
+    .hero-content .btn {
+      font-size: 1.1rem;
+      padding: 0.85rem 2.5rem;
+      background: linear-gradient(to right, #007bff, #0056b3);
+      border: none;
+      border-radius: 50px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+    }
+    
+    .hero-content .btn:hover {
+      background: linear-gradient(to right, #0056b3, #003d80);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    }
+
+    /* Navbar */
+    .navbar {
+      background-color: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 0.75rem 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
+
+    .navbar-brand {
+      font-weight: 600;
+      color: #007bff;
+      font-size: 1.4rem;
+    }
+
+    .nav-link {
+      color: #333;
+      font-weight: 500;
+      margin: 0 0.5rem;
+      transition: color 0.2s ease;
+    }
+
+    .nav-link:hover {
+      color: #007bff;
+    }
+
+    .auth-buttons .btn {
+      margin-left: 0.5rem;
+    }
+
+    .user-avatar {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      object-fit: cover;
+      cursor: pointer;
+      border: 2px solid #007bff;
+    }
+
+    /* Countries Section */
+    .countries-section {
+      padding: 4rem 0;
+      background: linear-gradient(to bottom, #fff, #f8f9fa);
+    }
+    
+    .countries-container {
+      display: flex;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      padding-bottom: 1.5rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .country-card {
+      flex: 0 0 auto;
+      width: 280px;
+      margin-right: 1.5rem;
+      border: none;
+      border-radius: 15px;
+      overflow: hidden;
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+      position: relative;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    }
+    
+    .country-card:hover {
+      transform: translateY(-15px) scale(1.03);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .country-card img {
+      height: 180px;
+      width: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+    
+    .country-card:hover img {
+      transform: scale(1.1);
+    }
+    
+    .country-card .card-body {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4), transparent);
+      color: #fff;
+      padding: 1.5rem 1rem 1rem;
+      text-align: center;
+    }
+    
+    .country-card .card-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 0;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Section titles */
+    .section-title {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 2.5rem;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .section-title::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 50px;
+      height: 3px;
+      background: linear-gradient(to right, #007bff, #00c6ff);
+      border-radius: 3px;
+    }
+    
+    .countries-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Side Tags */
+    .side-tags {
+      background: #fff;
+      padding: 1.5rem;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .side-tags:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .side-tags h4 {
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #333;
+      position: relative;
+      padding-bottom: 0.5rem;
+    }
+    
+    .side-tags h4::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 40px;
+      height: 3px;
+      background: linear-gradient(to right, #007bff, #00c6ff);
+      border-radius: 3px;
+    }
+    
+    .side-tags .tag {
+      display: block;
+      padding: 0.75rem 1.25rem;
+      margin: 0.75rem 0;
+      background: #f8f9fa;
+      border-radius: 8px;
+      color: #555;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      border-left: 3px solid transparent;
+      font-weight: 500;
+    }
+    
+    .side-tags .tag:hover {
+      background: #e9f5ff;
+      color: #007bff;
+      border-left: 3px solid #007bff;
+      transform: translateX(5px);
+    }
+    
+    .side-tags .tag.active {
+      background: linear-gradient(to right, #007bff, #00c6ff);
+      color: #fff;
+      border-left: 3px solid #0056b3;
+      box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+    }
+
+    /* Filter Tags */
+    .filter-tags {
+      margin-top: 1.5rem;
+    }
+    
+    .filter-tags h4 {
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #333;
+      position: relative;
+      padding-bottom: 0.5rem;
+    }
+    
+    .filter-tags h4::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 40px;
+      height: 3px;
+      background: linear-gradient(to right, #007bff, #00c6ff);
+      border-radius: 3px;
+    }
+    
+    .filter-tags .tag {
+      display: inline-block;
+      padding: 0.6rem 1.2rem;
+      margin: 0.35rem;
+      background: #f8f9fa;
+      border-radius: 50px;
+      color: #555;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      font-weight: 500;
+      border: 1px solid #e9ecef;
+    }
+    
+    .filter-tags .tag:hover {
+      background: #e9f5ff;
+      color: #007bff;
+      border-color: #007bff;
+      transform: translateY(-2px);
+    }
+    
+    .filter-tags .tag.active {
+      background: linear-gradient(to right, #007bff, #00c6ff);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+    }
+    
+    #clear-filters {
+      margin-top: 1rem;
+      background: #f1f1f1;
+      color: #555;
+      border: none;
+      border-radius: 50px;
+      padding: 0.6rem 1.2rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    #clear-filters:hover {
+      background: #e9ecef;
+      color: #333;
+    }
+
+    /* Map Section */
+    #map {
+      height: 650px;
+      width: 100%;
+      border-radius: 15px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      border: 5px solid white;
+      transition: box-shadow 0.3s ease;
+    }
+    
+    #map:hover {
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Controls Section */
+    .controls {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+      margin-bottom: 1.5rem;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .controls:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .controls .form-control {
+      border-radius: 50px;
+      padding: 0.75rem 1.5rem;
+      border: 1px solid #e9ecef;
+      transition: all 0.3s ease;
+    }
+    
+    .controls .form-control:focus {
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+      border-color: #007bff;
+    }
+    
+    .controls .btn {
+      border-radius: 50px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    .controls .btn-primary {
+      background: linear-gradient(to right, #007bff, #00c6ff);
+      border: none;
+      box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+    }
+    
+    .controls .btn-primary:hover {
+      background: linear-gradient(to right, #0056b3, #007bff);
+      box-shadow: 0 6px 15px rgba(0, 123, 255, 0.3);
+      transform: translateY(-2px);
+    }
+    
+    .controls .btn-secondary {
+      background: #f8f9fa;
+      color: #555;
+      border: 1px solid #e9ecef;
+    }
+    
+    .controls .btn-secondary:hover {
+      background: #e9ecef;
+      color: #333;
+      border-color: #ddd;
+    }
+    
+    .controls .btn-info {
+      background: linear-gradient(to right, #17a2b8, #20c997);
+      border: none;
+      box-shadow: 0 4px 10px rgba(23, 162, 184, 0.2);
+    }
+    
+    .controls .btn-info:hover {
+      background: linear-gradient(to right, #138496, #17a2b8);
+      box-shadow: 0 6px 15px rgba(23, 162, 184, 0.3);
+      transform: translateY(-2px);
+    }
+    
+    .controls .form-select {
+      border-radius: 50px;
+      padding: 0.75rem 1.5rem;
+      border: 1px solid #e9ecef;
+      transition: all 0.3s ease;
+    }
+
+    /* Recommendation List Section */
+    .recommendation-section {
+      background: linear-gradient(to bottom, #f8f9fa, #fff);
+      padding: 4rem 0;
+    }
+
+    .recommendation-section .card {
+      border: none;
+      border-radius: 15px;
+      overflow: hidden;
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      height: 100%;
+    }
+
+    .recommendation-section .card:hover {
+      transform: translateY(-10px) scale(1.02);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .recommendation-section .card img {
+      height: 180px;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .recommendation-section .card:hover img {
+      transform: scale(1.1);
+    }
+
+    .recommendation-section .card-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      height: calc(100% - 180px);
+    }
+
+    .recommendation-section .card-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: #333;
+    }
+
+    .recommendation-section .card-text {
+      font-size: 0.95rem;
+      color: #555;
+      flex-grow: 1;
+    }
+
+    .recommendation-section .btn {
+      align-self: flex-start;
+    }
+
+    /* Loading and Fallback Messages */
+    #recommendation-loading,
+    #recommendation-fallback {
+      margin-top: 2rem;
+    }
+
+    #recommendation-loading .spinner-border {
+      width: 3rem;
+      height: 3rem;
+    }
+
+    #recommendation-fallback p {
+      font-size: 1.1rem;
+      color: #666;
+    }
+
+    /* Safety Alerts Section */
+    .safety-alerts-section {
+      background-color: #fff;
+      padding: 2rem 0;
+      border-top: 1px solid #e9ecef;
+    }
+
+    .alert-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .alert-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand" href="#">Personal Travel Guide</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="#">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#search-section">Explore</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" id="request-guide-btn">Request Guide</a>
+          </li>
+        </ul>
+        <div class="auth-buttons" id="auth-buttons">
+          <button class="btn btn-outline-primary" id="login-btn">Log In</button>
+          <button class="btn btn-primary" id="signup-btn">Sign Up</button>
+        </div>
+        <div class="user-menu d-none" id="user-menu">
+          <img src="https://ui-avatars.com/api/?name=User&background=007bff&color=fff" alt="User" class="user-avatar" id="user-avatar">
+          <div class="user-dropdown" id="user-dropdown">
+            <div class="user-dropdown-item" id="profile-btn">My Profile</div>
+            <div class="user-dropdown-item" id="preferences-btn">Travel Preferences</div>
+            <div class="user-dropdown-item" id="logout-btn">Log Out</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Authentication Modal -->
+  <div class="auth-modal" id="auth-modal">
+    <div class="auth-container">
+      <div class="auth-close" id="auth-close">×</div>
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="login-tab">Log In</div>
+        <div class="auth-tab" id="signup-tab">Sign Up</div>
+      </div>
+      <form class="auth-form active" id="login-form">
+        <div class="mb-3">
+          <label for="login-email" class="form-label">Email</label>
+          <input type="email" class="form-control" id="login-email" required>
+        </div>
+        <div class="mb-3">
+          <label for="login-password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="login-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Log In</button>
+        <div class="text-center mt-3">
+          <a href="#" id="forgot-password">Forgot Password?</a>
+        </div>
+      </form>
+      <form class="auth-form" id="signup-form">
+        <div class="mb-3">
+          <label for="signup-name" class="form-label">Full Name</label>
+          <input type="text" class="form-control" id="signup-name" required>
+        </div>
+        <div class="mb-3">
+          <label for="signup-email" class="form-label">Email</label>
+          <input type="email" class="form-control" id="signup-email" required>
+        </div>
+        <div class="mb-3">
+          <label for="signup-password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="signup-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Sign Up</button>
+      </form>
+      <div class="auth-providers">
+        <p>Or continue with</p>
+        <button id="google-login">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google">
+          Google
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Guide Modal -->
+  <div class="email-guide-modal" id="email-guide-modal">
+    <div class="email-guide-container">
+      <div class="email-guide-close" id="email-guide-close">×</div>
+      <h4 class="mb-4">Request Personalized AI Agent Travel Itinerary</h4>
+      <form id="email-guide-form">
+        <div class="mb-3">
+          <label for="guide-destination" class="form-label">Destination</label>
+          <input type="text" class="form-control" id="guide-destination" required>
+        </div>
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="guide-start-date" class="form-label">Start Date</label>
+            <input type="date" class="form-control" id="guide-start-date" required>
+          </div>
+          <div class="col-md-6">
+            <label for="guide-end-date" class="form-label">End Date</label>
+            <input type="date" class="form-control" id="guide-end-date" required>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="guide-travelers" class="form-label">Number of Travelers</label>
+            <input type="number" class="form-control" id="guide-travelers" min="1" value="1" required>
+          </div>
+          <div class="col-md-6">
+            <label for="guide-budget" class="form-label">Budget Range</label>
+            <select class="form-control" id="guide-budget" required>
+              <option value="budget">Budget ($)</option>
+              <option value="moderate">Moderate ($$)</option>
+              <option value="luxury">Luxury ($$$)</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="guide-interests" class="form-label">Interests & Activities</label>
+          <textarea class="form-control" id="guide-interests" rows="2" placeholder="e.g., historical sites, local cuisine, outdoor activities" required></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="guide-email" class="form-label">Email Address</label>
+          <input type="email" class="form-control" id="guide-email" required>
+        </div>
+        <div class="mb-3">
+          <label for="guide-special-requests" class="form-label">Special Requests (optional)</label>
+          <textarea class="form-control" id="guide-special-requests" rows="2" placeholder="Any dietary restrictions, accessibility needs, or specific preferences"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Send me my travel itinerary</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <h1>Explore the World with Ease</h1>
+      <p class="lead">Your personal travel guide to discover the best attractions, restaurants, and hotels around the globe.</p>
+      <a href="#search-section" class="btn btn-primary">Start Exploring</a>
+    </div>
+  </section>
+
+  <!-- Discover Hidden Gems Section -->
+  <section class="countries-section">
+    <div class="container">
+      <h2 class="mb-4 text-center">Discover Hidden Gems</h2>
+      <div class="countries-container">
+        <div class="card country-card" onclick="setLocation('Australia')">
+          <img src="https://i.ibb.co/N9zxbWk/australia.jpg" class="card-img-top" alt="Australia" />
+          <div class="card-body">
+            <h5 class="card-title">Australia</h5>
+          </div>
+        </div>
+        <div class="card country-card" onclick="setLocation('Marrakesh, Morocco')">
+          <img src="https://i.ibb.co/cXQNrkk/desert-morocco-adventure-w-Xbg-EYQTzx-Y-unsplash.jpg" class="card-img-top" alt="Morocco" />
+          <div class="card-body">
+            <h5 class="card-title">Morocco</h5>
+          </div>
+        </div>
+        <div class="card country-card" onclick="setLocation('New York, USA')">
+          <img src="https://i.ibb.co/8dZPSJS/NY.jpg" class="card-img-top" alt="New York" />
+          <div class="card-body">
+            <h5 class="card-title">New York, USA</h5>
+          </div>
+        </div>
+        <div class="card country-card" onclick="setLocation('Rome, Italy')">
+          <img src="https://i.ibb.co/dBVQbhm/rome-italy.jpg" class="card-img-top" alt="Rome, Italy" />
+          <div class="card-body">
+            <h5 class="card-title">Rome, Italy</h5>
+          </div>
+        </div>
+        <div class="card country-card" onclick="setLocation('Switzerland')">
+          <img src="https://i.ibb.co/g3TJmDx/switrland.jpg" class="card-img-top" alt="Switzerland" />
+          <div class="card-body">
+            <h5 class="card-title">Switzerland</h5>
+          </div>
+        </div>
+        <div class="card country-card" onclick="setLocation('Tokyo, Japan')">
+          <img src="https://i.ibb.co/zHwGpy4/tokyo.jpg" class="card-img-top" alt="Tokyo, Japan" />
+          <div class="card-body">
+            <h5 class="card-title">Tokyo, Japan</h5>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Search and Map Section -->
+  <section id="search-section">
+    <div class="container">
+      <h3 class="text-center mb-4">Search Places</h3>
+      <div class="row">
+        <div class="col-md-3">
+          <div class="side-tags">
+            <h4>Categories</h4>
+            <a href="#" class="tag active" data-type="tourist_attraction">Tourist Attractions</a>
+            <a href="#" class="tag" data-type="restaurant">Restaurants</a>
+            <a href="#" class="tag" data-type="hotel">Hotels</a>
+            <a href="#" class="tag" data-type="museum">Museums</a>
+            <a href="#" class="tag" data-type="park">Parks</a>
+          </div>
+          <div class="filter-tags">
+            <h4>Filters</h4>
+            <div class="tag" data-filter="rating-4">⭐ 4+ Stars</div>
+            <div class="tag" data-filter="family-friendly">Family Friendly</div>
+            <div class="tag" data-filter="romantic">Romantic</div>
+            <div class="tag" data-filter="budget">Budget</div>
+            <div class="tag" data-filter="adventure">Adventure</div>
+            <div class="tag" data-filter="historical">Historical</div>
+            <div class="tag" data-filter="nature">Nature</div>
+            <div class="tag" data-filter="nightlife">Nightlife</div>
+            <button id="clear-filters" class="btn btn-secondary">Clear Filters</button>
+          </div>
+        </div>
+        <div class="col-md-9">
+          <div class="controls mb-4">
+            <div class="row">
+              <div class="col-md-8">
+                <input type="text" id="location" class="form-control" placeholder="Enter location" />
+              </div>
+              <div class="col-md-4">
+                <button class="btn btn-primary w-100" onclick="searchPlaces()">Search</button>
+              </div>
+            </div>
+            <div class="row mt-3">
+              <div class="col-md-6">
+                <button class="btn btn-secondary w-100" onclick="clearRoute()">Clear Location</button>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex align-items-center">
+                  <select id="language" class="form-select me-2" style="width: auto;">
+                    <option value="en" selected>English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="zh">Chinese (Simplified)</option>
+                    <option value="ja">Japanese</option>
+                    <!-- Add more languages as needed -->
+                  </select>
+                  <button class="btn btn-info translate-btn" onclick="translateDescriptions()">Translate Descriptions</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-12">
+              <div id="map"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recommendation List Section -->
+  <section class="recommendation-section mt-5">
+    <div class="container">
+      <h3 class="text-center mb-4">Recommended Spots</h3>
+      <div id="recommendation-loading" class="text-center d-none">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading Recommended Spots...</p>
+      </div>
+      <div id="recommendation-fallback" class="text-center">
+        <p>No valid address provided. Please enter a valid address in the "Search Places" field above.</p>
+      </div>
+      <div class="row" id="recommendation-list"></div>
+    </div>
+  </section>
+
+  <!-- Safety Alerts Section -->
+  <section class="safety-alerts-section mt-5">
+    <div class="container">
+      <h3 class="text-center mb-4">Safety Alerts</h3>
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <div id="safety-alerts-loading" class="text-center d-none">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Checking Safety Alerts...</p>
+          </div>
+          <div id="safety-alerts-list"></div>
+          <div id="safety-alerts-fallback" class="text-center">
+            <p>No valid address provided. Please enter a valid address in the "Search Places" field above.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer Section -->
+  <footer class="credits-section text-center py-4 bg-light mt-5">
+    <div class="container">
+      <p class="mb-1">Created by <strong>Said Lfagrouche</strong></p>
+      <p class="mb-1">
+        <a href="https://saidlfagrouche.com" target="_blank" class="text-decoration-none">My Website</a> | 
+        <a href="https://www.linkedin.com/in/saidlfagrouche/" target="_blank" class="text-decoration-none">LinkedIn</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Google Maps API -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initMap"></script>
+  
+  <!-- Custom JS -->
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "{{ config.FIREBASE_API_KEY }}",
+      authDomain: "{{ config.FIREBASE_AUTH_DOMAIN }}",
+      projectId: "{{ config.FIREBASE_PROJECT_ID }}",
+      storageBucket: "{{ config.FIREBASE_STORAGE_BUCKET }}",
+      messagingSenderId: "{{ config.FIREBASE_MESSAGING_SENDER_ID }}",
+      appId: "{{ config.FIREBASE_APP_ID }}",
+      measurementId: "{{ config.FIREBASE_MEASUREMENT_ID }}"
+    };
+  
+    let firebaseInitialized = false;
+    try {
+      if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        firebase.initializeApp(firebaseConfig);
+        firebaseInitialized = true;
+        console.log("Firebase initialized successfully");
+      } else {
+        console.warn("Firebase not initialized: Please provide a valid Firebase configuration");
+        showAlert("Firebase not configured. Authentication features are disabled.", "warning");
+      }
+    } catch (error) {
+      console.error("Firebase initialization error:", error);
+      showAlert("Firebase initialization failed. Authentication features are disabled.", "danger");
+    }
+  
+    let auth, db;
+    if (firebaseInitialized) {
+      auth = firebase.auth();
+      db = firebase.firestore();
+    }
+  
+    let currentUser = null;
+  
+    // DOM Elements
+    const authButtons = document.getElementById('auth-buttons');
+    const userMenu = document.getElementById('user-menu');
+    const userAvatar = document.getElementById('user-avatar');
+    const userDropdown = document.getElementById('user-dropdown');
+    const loginBtn = document.getElementById('login-btn');
+    const signupBtn = document.getElementById('signup-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const authModal = document.getElementById('auth-modal');
+    const authClose = document.getElementById('auth-close');
+    const loginTab = document.getElementById('login-tab');
+    const signupTab = document.getElementById('signup-tab');
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const googleLoginBtn = document.getElementById('google-login');
+    const forgotPasswordBtn = document.getElementById('forgot-password');
+    const requestGuideBtn = document.getElementById('request-guide-btn');
+    const emailGuideModal = document.getElementById('email-guide-modal');
+    const emailGuideClose = document.getElementById('email-guide-close');
+    const emailGuideForm = document.getElementById('email-guide-form');
+  
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      if (firebaseInitialized) {
+        auth.onAuthStateChanged((user) => {
+          currentUser = user;
+          if (user) {
+            authButtons.classList.add('d-none');
+            userMenu.classList.remove('d-none');
+            userAvatar.src = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=007bff&color=fff`;
+          } else {
+            authButtons.classList.remove('d-none');
+            userMenu.classList.add('d-none');
+          }
+        });
+      }
+    });
+  
+    loginBtn.addEventListener('click', () => showAuthModal('login'));
+    signupBtn.addEventListener('click', () => showAuthModal('signup'));
+    authClose.addEventListener('click', () => authModal.classList.remove('active'));
+    loginTab.addEventListener('click', () => toggleAuthTab('login'));
+    signupTab.addEventListener('click', () => toggleAuthTab('signup'));
+    userAvatar.addEventListener('click', () => userDropdown.classList.toggle('active'));
+    document.addEventListener('click', (e) => {
+      if (!userMenu.contains(e.target)) userDropdown.classList.remove('active');
+    });
+    logoutBtn.addEventListener('click', () => {
+      if (firebaseInitialized) auth.signOut();
+    });
+    requestGuideBtn.addEventListener('click', () => {
+      if (!firebaseInitialized) {
+        showAlert("This feature requires Firebase.", "warning");
+        return;
+      }
+      if (!currentUser) {
+        showAlert('Please log in to request a travel guide.', 'warning');
+        showAuthModal('login');
+        return;
+      }
+      document.getElementById('guide-email').value = currentUser.email;
+      const location = document.getElementById('location').value;
+      if (location) document.getElementById('guide-destination').value = location;
+      emailGuideModal.classList.add('active');
+    });
+    emailGuideClose.addEventListener('click', () => emailGuideModal.classList.remove('active'));
+  
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!firebaseInitialized) return showAlert("Firebase not available.", "warning");
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        authModal.classList.remove('active');
+        showAlert('Logged in successfully!', 'success');
+      } catch (error) {
+        showAlert(`Login failed: ${error.message}`, 'danger');
+      }
+    });
+  
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!firebaseInitialized) return showAlert("Firebase not available.", "warning");
+      const name = document.getElementById('signup-name').value;
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        await userCredential.user.updateProfile({ displayName: name });
+        await db.collection('users').doc(userCredential.user.uid).set({
+          name, email, createdAt: firebase.firestore.FieldValue.serverTimestamp(), preferences: []
+        });
+        authModal.classList.remove('active');
+        showAlert('Account created successfully!', 'success');
+      } catch (error) {
+        showAlert(`Signup failed: ${error.message}`, 'danger');
+      }
+    });
+  
+    googleLoginBtn.addEventListener('click', async () => {
+      if (!firebaseInitialized) return showAlert("Firebase not available.", "warning");
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        const result = await auth.signInWithPopup(provider);
+        if (result.additionalUserInfo.isNewUser) {
+          await db.collection('users').doc(result.user.uid).set({
+            name: result.user.displayName,
+            email: result.user.email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            preferences: []
+          });
+        }
+        authModal.classList.remove('active');
+        showAlert('Logged in with Google successfully!', 'success');
+      } catch (error) {
+        showAlert(`Google login failed: ${error.message}`, 'danger');
+      }
+    });
+  
+    forgotPasswordBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (!firebaseInitialized) return showAlert("Firebase not available.", "warning");
+      const email = document.getElementById('login-email').value;
+      if (!email) return showAlert('Please enter your email address.', 'warning');
+      try {
+        await auth.sendPasswordResetEmail(email);
+        showAlert('Password reset email sent. Check your inbox.', 'success');
+      } catch (error) {
+        showAlert(`Password reset failed: ${error.message}`, 'danger');
+      }
+    });
+  
+    emailGuideForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!firebaseInitialized) return showAlert("Firebase not available.", "warning");
+      if (!currentUser) {
+        showAlert('Please log in to request a travel guide.', 'warning');
+        emailGuideModal.classList.remove('active');
+        showAuthModal('login');
+        return;
+      }
+  
+      const destination = document.getElementById('guide-destination').value;
+      const startDate = document.getElementById('guide-start-date').value;
+      const endDate = document.getElementById('guide-end-date').value;
+      const travelers = document.getElementById('guide-travelers').value;
+      const budget = document.getElementById('guide-budget').value;
+      const interests = document.getElementById('guide-interests').value;
+      const email = document.getElementById('guide-email').value;
+      const specialRequests = document.getElementById('guide-special-requests').value;
+  
+      // Show immediate feedback to the user
+      emailGuideModal.classList.remove('active');
+      showAlert('Your travel itinerary is being generated. Check your email in a few minutes!', 'success');
+  
+      // Send the request to the backend without awaiting completion
+      fetch('http://localhost:5000/api/generate-travel-guide', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          destination,
+          start_date: startDate,
+          end_date: endDate,
+          travelers: parseInt(travelers),
+          budget,
+          interests,
+          email,
+          special_requests: specialRequests
+        })
+      })
+      .then(response => response.json())
+      .then(result => {
+        if (!result.success) {
+          console.error('Travel guide generation failed:', result.message);
+          // Optionally show a follow-up error if the backend fails later
+          // showAlert(`Failed to generate travel guide: ${result.message}`, 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error sending travel guide request:', error);
+        // Optionally notify the user of a network error
+        // showAlert(`Network error: ${error.message}. Please try again later.`, 'danger');
+      });
+    });
+  
+    // Helper Functions
+    function showAuthModal(tab = 'login') {
+      if (!firebaseInitialized) return showAlert("Firebase not available.", "warning");
+      loginTab.classList.toggle('active', tab === 'login');
+      signupTab.classList.toggle('active', tab === 'signup');
+      loginForm.classList.toggle('active', tab === 'login');
+      signupForm.classList.toggle('active', tab === 'signup');
+      authModal.classList.add('active');
+    }
+  
+    function toggleAuthTab(tab) {
+      loginTab.classList.toggle('active', tab === 'login');
+      signupTab.classList.toggle('active', tab === 'signup');
+      loginForm.classList.toggle('active', tab === 'login');
+      signupForm.classList.toggle('active', tab === 'signup');
+    }
+  
+    function showAlert(message, type = 'info') {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-4`;
+      alertDiv.style.zIndex = '9999';
+      alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      document.body.appendChild(alertDiv);
+      setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => alertDiv.remove(), 150);
+      }, 5000);
+    }
+  
+    // Map and Places
+    let map;
+    let markers = [];
+    let allPlaces = [];
+  
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 0, lng: 0 },
+        zoom: 2
+      });
+    }
+  
+    function setLocation(location) {
+      document.getElementById("location").value = location;
+      searchPlaces();
+    }
+  
+    async function searchPlaces() {
+      const location = document.getElementById("location").value;
+      const placeType = document.querySelector(".side-tags .tag.active")?.dataset.type || 'tourist_attraction';
+  
+      document.getElementById("recommendation-loading").classList.remove("d-none");
+      document.getElementById("recommendation-fallback").classList.add("d-none");
+      document.getElementById("recommendation-list").innerHTML = "";
+  
+      if (!location) {
+        document.getElementById("recommendation-loading").classList.add("d-none");
+        document.getElementById("recommendation-fallback").classList.remove("d-none");
+        return;
+      }
+  
+      try {
+        const response = await fetch(`/api/search_places?location=${encodeURIComponent(location)}&type=${placeType}`, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+  
+        document.getElementById("recommendation-loading").classList.add("d-none");
+  
+        if (!data.places || data.places.length === 0) {
+          document.getElementById("recommendation-fallback").classList.remove("d-none");
+          document.getElementById("recommendation-fallback").innerText = "No recommended spots found for this location.";
+        } else {
+          allPlaces = data.places;
+          displayPlaces(allPlaces);
+        }
+      } catch (error) {
+        console.error("Error fetching places:", error);
+        document.getElementById("recommendation-loading").classList.add("d-none");
+        document.getElementById("recommendation-fallback").classList.remove("d-none");
+        document.getElementById("recommendation-fallback").innerText = "Failed to fetch recommended spots. Please try again.";
+      }
+  
+      fetchSafetyAlerts();
+    }
+  
+    async function displayPlaces(places) {
+      markers.forEach(marker => marker.setMap(null));
+      markers = [];
+      const recommendationList = document.getElementById("recommendation-list");
+      recommendationList.innerHTML = "";
+  
+      document.getElementById("recommendation-loading").classList.add("d-none");
+      document.getElementById("recommendation-fallback").classList.add("d-none");
+  
+      places.forEach((place, index) => {
+        const marker = new google.maps.Marker({
+          position: place.location,
+          map: map,
+          title: place.name,
+          label: (index + 1).toString()
+        });
+        markers.push(marker);
+  
+        const recommendationDiv = document.createElement("div");
+        recommendationDiv.className = "col-md-4 mb-4";
+        recommendationDiv.innerHTML = `
+          <div class="card">
+            ${place.photo ? `<img src="${place.photo}" class="card-img-top" alt="${place.name}" loading="lazy">` : '<div class="card-img-top" style="height: 180px; background: #e9ecef;"></div>'}
+            <div class="card-body">
+              <h5 class="card-title">${place.name || 'Unnamed Place'}</h5>
+              <p class="card-text">${place.address || 'No address available'}</p>
+              <p class="card-text"><strong>Rating:</strong> ${place.rating || "N/A"}</p>
+              <p class="card-text description">${place.description || "No description available."}</p>
+              <button class="btn btn-primary btn-sm" onclick='openGoogleMapsDirections(${JSON.stringify(place.location)})'>Directions</button>
+            </div>
+          </div>
+        `;
+        recommendationList.appendChild(recommendationDiv);
+      });
+  
+      if (places.length > 0) {
+        map.setCenter(places[0].location);
+        map.setZoom(13);
+      }
+    }
+  
+    function openGoogleMapsDirections(location) {
+      const destination = `${location.lat},${location.lng}`;
+      const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+      window.open(googleMapsUrl, '_blank');
+    }
+  
+    async function clearRoute() {
+      markers.forEach(marker => marker.setMap(null));
+      markers = [];
+      document.getElementById("recommendation-list").innerHTML = "";
+      document.getElementById("recommendation-loading").classList.add("d-none");
+      document.getElementById("recommendation-fallback").classList.remove("d-none");
+      map.setCenter({ lat: 0, lng: 0 });
+      map.setZoom(2);
+    }
+  
+    async function translateDescriptions() {
+      const targetLang = document.getElementById("language").value;
+      const descriptions = document.querySelectorAll(".description");
+  
+      for (const desc of descriptions) {
+        const originalText = desc.innerText;
+        if (originalText === "No description available.") continue;
+  
+        try {
+          const response = await fetch(`/api/translate?text=${encodeURIComponent(originalText)}&target_lang=${targetLang}`);
+          const data = await response.json();
+          if (data.translated_text) desc.innerText = data.translated_text;
+        } catch (error) {
+          console.error("Error translating description:", error);
+        }
+      }
+    }
+  
+    async function fetchSafetyAlerts() {
+      const location = document.getElementById("location").value;
+      const alertsList = document.getElementById("safety-alerts-list");
+  
+      document.getElementById("safety-alerts-loading").classList.remove("d-none");
+      document.getElementById("safety-alerts-fallback").classList.add("d-none");
+      alertsList.innerHTML = "";
+  
+      if (!location) {
+        document.getElementById("safety-alerts-loading").classList.add("d-none");
+        document.getElementById("safety-alerts-fallback").classList.remove("d-none");
+        return;
+      }
+  
+      try {
+        const response = await fetch("/api/safety-alerts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ destination: location })
+        });
+        const data = await response.json();
+  
+        document.getElementById("safety-alerts-loading").classList.add("d-none");
+  
+        if (!data.alerts || data.alerts.length === 0) {
+          alertsList.innerHTML = `<div class="alert alert-info text-center">No safety alerts found for ${location}.</div>`;
+        } else {
+          data.alerts.forEach(alert => {
+            const alertCard = document.createElement("div");
+            alertCard.className = "alert-card mb-3 p-3 bg-white rounded shadow-sm";
+            alertCard.innerHTML = `
+              <h5 class="mb-2">${alert.dangerous_news_and_safety_alert || 'Unknown Alert'}</h5>
+              <p class="mb-1"><strong>Date:</strong> ${alert.date || 'N/A'}</p>
+              <p class="mb-0"><strong>Source:</strong> <a href="${alert.link || '#'}" target="_blank">${alert.link || 'No link'}</a></p>
+            `;
+            alertsList.appendChild(alertCard);
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching safety alerts:", error);
+        document.getElementById("safety-alerts-loading").classList.add("d-none");
+        alertsList.innerHTML = `<div class="alert alert-danger text-center">Failed to fetch safety alerts. Please try again later.</div>`;
+      }
+    }
+  
+    document.querySelectorAll(".side-tags .tag").forEach(tag => {
+      tag.addEventListener("click", (e) => {
+        e.preventDefault();
+        document.querySelectorAll(".side-tags .tag").forEach(t => t.classList.remove("active"));
+        tag.classList.add("active");
+        searchPlaces();
+      });
+    });
+  
+    document.querySelectorAll(".filter-tags .tag").forEach(tag => {
+      tag.addEventListener("click", () => {
+        tag.classList.toggle("active");
+        applyFilters();
+      });
+    });
+  
+    document.getElementById("clear-filters").addEventListener("click", () => {
+      document.querySelectorAll(".filter-tags .tag.active").forEach(tag => tag.classList.remove("active"));
+      displayPlaces(allPlaces);
+    });
+  
+    async function applyFilters() {
+      const activeFilters = Array.from(document.querySelectorAll(".filter-tags .tag.active")).map(tag => tag.dataset.filter);
+      let filteredPlaces = [...allPlaces];
+  
+      if (activeFilters.includes("rating-4")) filteredPlaces = filteredPlaces.filter(place => place.rating >= 4);
+      if (activeFilters.includes("family-friendly")) filteredPlaces = filteredPlaces.filter(place => place.types?.includes("amusement_park") || place.types?.includes("zoo"));
+      if (activeFilters.includes("romantic")) filteredPlaces = filteredPlaces.filter(place => place.types?.includes("restaurant") || place.types?.includes("park"));
+      if (activeFilters.includes("budget")) filteredPlaces = filteredPlaces.filter(place => place.price_level <= 1);
+      if (activeFilters.includes("adventure")) filteredPlaces = filteredPlaces.filter(place => place.types?.includes("hiking") || place.types?.includes("campground"));
+      if (activeFilters.includes("historical")) filteredPlaces = filteredPlaces.filter(place => place.types?.includes("museum") || place.types?.includes("historical"));
+      if (activeFilters.includes("nature")) filteredPlaces = filteredPlaces.filter(place => place.types?.includes("park") || place.types?.includes("natural_feature"));
+      if (activeFilters.includes("nightlife")) filteredPlaces = filteredPlaces.filter(place => place.types?.includes("night_club") || place.types?.includes("bar"));
+  
+      displayPlaces(filteredPlaces);
+    }
+  </script>
+</body>
+</html>

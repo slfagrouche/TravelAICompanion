@@ -361,7 +361,7 @@ Distributed under the **MIT License**. See the `LICENSE` file for more informati
 
 ---
 
-For further assistance, reach out via [GitHub Issues](https://github.com/slfagrouche/TUTOR/issues).
+For further assistance, reach out via [GitHub Issues](https://github.com/slfagrouche/TravelAICompanion/issues).
 
 Happy Coding! :)
 
